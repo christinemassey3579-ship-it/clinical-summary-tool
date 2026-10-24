@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Clinical <span>Summary</span> Tool · Admin</div>
+    <nav>
+      <a href="/">New summary</a>
+      <a href="/admin" class="active">Admin dashboard</a>
+      <a href="#" id="logoutBtn" class="hidden">Log out</a>
+    </nav>
+  </header>
+
+  <!-- LOGIN -->
+  <section class="card login" id="loginCard">
+    <h2>Admin sign-in</h2>
+    <p class="sub">Enter the admin key (set as ADMIN_KEY in Replit Secrets).</p>
+    <label for="adminKey">Admin key</label>
+    <input type="password" id="adminKey" placeholder="Admin key" />
+    <div class="actions"><button id="loginBtn">Open dashboard</button></div>
+    <div class="error" id="loginError"></div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <main id="dashboard" class="hidden">
+    <div class="stats" id="stats"></div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Priority breakdown</h2>
+        <p class="sub">How urgent the processed notes have been.</p>
+        <div class="bars" id="priorityBars"></div>
+      </section>
+      <section class="card">
+        <h2>Top risk categories</h2>
+        <p class="sub">Most frequently detected by the smart logic layer.</p>
+        <div class="bars" id="riskBars"></div>
+      </section>
+      <section class="card">
+        <h2>Usage — last 7 days</h2>
+        <p class="sub">Summaries created per day.</p>
+        <div class="bars" id="dayBars"></div>
+      </section>
+      <section class="card">
+        <h2>System activity log</h2>
+        <p class="sub">Latest events, including errors and AI fallbacks.</p>
+        <div class="log" id="activityLog"></div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:20px">
+      <h2>All workflows</h2>
+      <p class="sub">Filter, review, and manage stored summaries.</p>
+      <div class="filters">
+        <input type="text" id="fSearch" placeholder="Search patient ref or text..." />
+        <select id="fPriority">
+          <option value="">All priorities</option>
+          <option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+        </select>
+        <select id="fStatus">
+          <option value="">All statuses</option>
+          <option value="open">Open</option>
+          <option value="reviewed">Reviewed</option>
+        </select>
+        <button class="ghost" id="refreshBtn">Refresh</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data">
+          <thead><tr><th>#</th><th>Created</th><th>Patient ref</th><th>Priority</th><th>Score</th><th>Engine</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- DETAIL MODAL -->
+  <div class="modal-bg" id="modalBg">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>
