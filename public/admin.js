@@ -125,7 +125,11 @@ function showDetail(r) {
     <div class="section"><h3>Risk flags</h3><div class="chips">${r.risk_flags.map((f) => `<span class="chip ${f.level}">${escapeHtml(f.category)}: ${escapeHtml(f.keywords.join(', '))} (+${f.weight})</span>`).join('') || 'None'}</div></div>
     <div class="section"><h3>Summary</h3><p>${escapeHtml(r.summary)}</p></div>
     <div class="section"><h3>Key points</h3><ul>${r.key_points.map((k) => `<li>${escapeHtml(k)}</li>`).join('')}</ul></div>
-    <div class="section"><h3>Next steps</h3><ul>${r.next_steps.map((k) => `<li>${escapeHtml(k)}</li>`).join('')}</ul></div>
+    <div class="section"><h3>Next steps</h3><ul class="steps">${r.next_steps.map((k) => {
+      const s = typeof k === 'string' ? { text: k, source: 'ai' } : k;
+      const label = { rule: 'Logic rule', ai: 'AI', summarizer: 'Summarizer' }[s.source] || '';
+      return `<li><span class="src ${s.source === 'rule' ? 'rule' : 'ai'}">${label}</span>${escapeHtml(s.text)}</li>`;
+    }).join('')}</ul></div>
     <div class="section"><h3>Original note</h3><pre>${escapeHtml(r.note_text)}</pre></div>
     <div class="actions"><button id="closeModal">Close</button></div>`;
   $('modalBg').classList.add('open');
@@ -140,6 +144,17 @@ $('fSearch').addEventListener('input', () => { clearTimeout(searchTimer); search
 $('fPriority').addEventListener('change', loadTable);
 $('fStatus').addEventListener('change', loadTable);
 $('refreshBtn').addEventListener('click', refresh);
+
+// Download all workflows as a CSV file
+$('exportBtn').addEventListener('click', async () => {
+  const res = await fetch('/api/admin/export', { headers: { 'x-admin-key': adminKey } });
+  if (!res.ok) { alert('Export failed'); return; }
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'clinical-summaries.csv' });
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  refresh();
+});
 
 // Auto-refresh every 30 seconds while the dashboard is open
 setInterval(() => { if (!$('dashboard').classList.contains('hidden')) refresh(); }, 30000);
