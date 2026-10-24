@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clinical Summary Tool</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Clinical <span>Summary</span> Tool</div>
+    <nav>
+      <a href="/" class="active">New summary</a>
+      <a href="/admin">Admin dashboard</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Live view of the system flow -->
+    <div class="pipeline" id="pipeline">
+      <span class="step" data-step="1">Input</span><span class="arrow">→</span>
+      <span class="step" data-step="2">Backend API</span><span class="arrow">→</span>
+      <span class="step" data-step="3">AI generation</span><span class="arrow">→</span>
+      <span class="step" data-step="4">Smart logic</span><span class="arrow">→</span>
+      <span class="step" data-step="5">Database</span><span class="arrow">→</span>
+      <span class="step" data-step="6">Structured output</span>
+    </div>
+
+    <div class="grid">
+      <!-- INPUT -->
+      <section class="card">
+        <h2>Clinical notes</h2>
+        <p class="sub">Paste a shift or progress note. Do not include real names or identifiers.</p>
+
+        <div class="row">
+          <div>
+            <label for="patientRef">Patient reference (optional)</label>
+            <input type="text" id="patientRef" placeholder="e.g. Bed 12 / MRN-0042" maxlength="40" />
+          </div>
+          <div>
+            <label for="author">Handoff by (optional)</label>
+            <input type="text" id="author" placeholder="e.g. Nurse A" maxlength="60" />
+          </div>
+        </div>
+
+        <label>Try a sample note</label>
+        <div class="samples">
+          <button class="ghost small" data-sample="critical">Chest pain (critical)</button>
+          <button class="ghost small" data-sample="high">Fall + confusion (high)</button>
+          <button class="ghost small" data-sample="medium">Cellulitis (medium)</button>
+          <button class="ghost small" data-sample="low">Stable (low)</button>
+        </div>
+
+        <label for="note">Note</label>
+        <textarea id="note" maxlength="10000" placeholder="e.g. 68M, day 3 post hip replacement. Reports pain 6/10..."></textarea>
+        <div class="charcount"><span id="count">0</span> / 10,000</div>
+
+        <div class="actions">
+          <button id="submitBtn">Generate summary</button>
+          <button class="ghost" id="clearBtn">Clear</button>
+        </div>
+        <div class="error" id="error"></div>
+      </section>
+
+      <!-- OUTPUT -->
+      <section class="card" id="output">
+        <div class="empty" id="emptyState">Your structured summary will appear here:<br />summary, key points, priority level and next steps.</div>
+
+        <div id="result" class="hidden">
+          <div class="result-head">
+            <div>
+              <h2>Handoff summary <span id="rId"></span></h2>
+              <div class="meta" id="rMeta"></div>
+            </div>
+            <span class="badge" id="rPriority"></span>
+          </div>
+
+          <div class="scorebar">
+            <div class="lbl"><span>Risk score</span><span id="rScore"></span></div>
+            <div class="track"><div class="fill" id="rFill"></div></div>
+            <div class="reason" id="rReason"></div>
+          </div>
+
+          <div class="section" id="flagsSection">
+            <h3>Risk flags detected</h3>
+            <div class="chips" id="rFlags"></div>
+          </div>
+
+          <div class="section">
+            <h3>Summary</h3>
+            <p id="rSummary"></p>
+          </div>
+
+          <div class="section">
+            <h3>Key points</h3>
+            <ul id="rKeyPoints"></ul>
+          </div>
+
+          <div class="section">
+            <h3>Next steps</h3>
+            <ul id="rNextSteps"></ul>
+          </div>
+
+          <div class="actions">
+            <button class="ghost small" id="copyBtn">Copy handoff text</button>
+          </div>
+
+          <div class="disclaimer" id="rDisclaimer"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- HISTORY -->
+    <section class="card history">
+      <h2>Recent summaries</h2>
+      <p class="sub">Stored in the database. Click a row to reopen it.</p>
+      <table>
+        <thead><tr><th>#</th><th>Time</th><th>Patient ref</th><th>Priority</th><th>Score</th><th>Summary</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="6" class="empty">No summaries yet.</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
