@@ -43,16 +43,28 @@ app.post('/api/summarize', async (req, res) => {
   }
 
   try {
+    // Pipeline trace: records how long each stage took, shown in the UI
+    const trace = [{ stage: 'Backend API', detail: 'Input validated', ms: Date.now() - started }];
+    let t = Date.now();
+
     // 2. AI generation (Claude, or rule-based fallback)
     const ai = await generateSummary(note);
+    trace.push({ stage: 'AI generation', detail: ai.ai_source, ms: Date.now() - t });
+    t = Date.now();
 
     // 3. Smart logic layer (risk keywords, vitals, score, priority, actions)
     const risk = analyzeRisk(note);
+    trace.push({ stage: 'Smart logic', detail: `${risk.risk_flags.length} flags → ${risk.priority}`, ms: Date.now() - t });
+    t = Date.now();
 
-    // 4. Merge: AI next steps + rule-based actions, safety actions first, no duplicates
+    // 4. Merge: rule-based safety actions first, then AI steps, no duplicates.
+    //    Each step keeps its source so the UI can show what the logic layer added.
     const seen = new Set();
-    const nextSteps = [...risk.suggested_actions, ...ai.next_steps].filter((s) => {
-      const k = s.toLowerCase().trim();
+    const nextSteps = [
+      ...risk.suggested_actions.map((text) => ({ text, source: 'rule' })),
+      ...ai.next_steps.map((text) => ({ text, source: ai.ai_source === 'claude' ? 'ai' : 'summarizer' })),
+    ].filter((s) => {
+      const k = s.text.toLowerCase().trim();
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -73,11 +85,13 @@ app.post('/api/summarize', async (req, res) => {
       processing_ms: Date.now() - started,
     });
 
+    trace.push({ stage: 'Database', detail: `Saved as #${saved.id}`, ms: Date.now() - t });
+
     db.logEvent('summary_created', `#${saved.id} ${risk.priority} (score ${risk.risk_score}) via ${ai.ai_source}`, true);
     if (ai.ai_error) db.logEvent('ai_fallback', ai.ai_error, false);
 
     // 6. Structured output
-    res.json({ ...saved, reasoning: risk.reasoning, disclaimer: DISCLAIMER });
+    res.json({ ...saved, reasoning: risk.reasoning, trace, disclaimer: DISCLAIMER });
   } catch (err) {
     console.error(err);
     db.logEvent('summarize_error', err.message, false);
@@ -95,7 +109,7 @@ app.get('/api/summaries', (req, res) => {
 app.get('/api/summaries/:id', (req, res) => {
   const row = db.getSummary(Number(req.params.id));
   if (!row) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...row, disclaimer: DISCLAIMER });
+  res.json({ ...row, reasoning: analyzeRisk(row.note_text).reasoning, disclaimer: DISCLAIMER });
 });
 
 // ---------- ADMIN (protected by a simple key) ----------
@@ -109,6 +123,22 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => res.json(db.getStats()))
 app.get('/api/admin/summaries', requireAdmin, (req, res) => {
   const { priority, status, q, limit } = req.query;
   res.json(db.listSummaries({ priority, status, q, limit: limit || 100 }));
+});
+
+// Export all workflows as a CSV file (opens in Excel / Google Sheets)
+app.get('/api/admin/export', requireAdmin, (req, res) => {
+  const rows = db.listSummaries({ limit: 500 });
+  const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['id', 'created_at', 'patient_ref', 'author', 'priority', 'risk_score', 'status', 'ai_source', 'summary', 'risk_flags', 'next_steps'];
+  const lines = rows.map((r) => [
+    r.id, r.created_at, r.patient_ref, r.author, r.priority, r.risk_score, r.status, r.ai_source, r.summary,
+    r.risk_flags.map((f) => `${f.category}: ${f.keywords.join('/')}`).join('; '),
+    r.next_steps.map((s) => (typeof s === 'string' ? s : s.text)).join('; '),
+  ].map(cell).join(','));
+  db.logEvent('export_csv', `${rows.length} rows`, true);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="clinical-summaries.csv"');
+  res.send([header.join(','), ...lines].join('\n'));
 });
 
 app.patch('/api/admin/summaries/:id', requireAdmin, (req, res) => {

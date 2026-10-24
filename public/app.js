@@ -114,8 +114,29 @@ function renderResult(r) {
 
   $('rSummary').textContent = r.summary;
   $('rKeyPoints').innerHTML = r.key_points.map((k) => `<li>${escapeHtml(k)}</li>`).join('');
-  $('rNextSteps').innerHTML = r.next_steps.map((k) => `<li>${escapeHtml(k)}</li>`).join('');
+  $('rNextSteps').innerHTML = r.next_steps.map((s) => {
+    const step = stepOf(s);
+    const tag = {
+      rule: '<span class="src rule" title="Added by the Smart Logic Layer">Logic rule</span>',
+      ai: '<span class="src ai" title="Suggested by Claude">AI</span>',
+      summarizer: '<span class="src ai" title="Built-in rule-based summarizer (no API key)">Summarizer</span>',
+    }[step.source] || '';
+    return `<li>${tag}${escapeHtml(step.text)}</li>`;
+  }).join('');
+
+  // How this result was produced (pipeline trace from the backend)
+  const trace = r.trace || [];
+  $('traceSection').classList.toggle('hidden', trace.length === 0);
+  $('rTrace').innerHTML = trace.map((t) =>
+    `<div class="trace-step"><strong>${escapeHtml(t.stage)}</strong><span>${escapeHtml(t.detail)}</span><em>${t.ms} ms</em></div>`
+  ).join('');
+
   $('rDisclaimer').textContent = r.disclaimer || '';
+}
+
+// Next steps are {text, source}; older records may be plain strings.
+function stepOf(s) {
+  return typeof s === 'string' ? { text: s, source: 'ai' } : s;
 }
 
 $('copyBtn').addEventListener('click', async () => {
@@ -129,7 +150,7 @@ $('copyBtn').addEventListener('click', async () => {
     '',
     'Key points:', ...r.key_points.map((k) => `- ${k}`),
     '',
-    'Next steps:', ...r.next_steps.map((k) => `- ${k}`),
+    'Next steps:', ...r.next_steps.map((k) => `- ${stepOf(k).text}`),
     '',
     r.disclaimer,
   ].join('\n');
